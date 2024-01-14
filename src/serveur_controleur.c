@@ -198,7 +198,7 @@ void* simulationVehicules(void* args) {
     char *priorityicon;
     while (simulationActive) {
         i++;
-        printf("⏳ Simulation en cours...%d sec\n", i);
+        printf("⏳ Simulation en cours...%-4d sec\n", i); // Ajustement de la largeur de champ
         for (int i = 0; i < NOMBRE_CARREFOURS / 2; i++) {
             printf("\n");
             printf("\n");
@@ -209,31 +209,26 @@ void* simulationVehicules(void* args) {
                 printf("\n");
             }
 
-            printf("📍Carrefour %d:                +                   📍Carrefour %d:\n", carrefour->id, carrefour[1].id);
+            printf("📍Carrefour %-3d:                +                   📍Carrefour %-3d:\n", carrefour->id, carrefour[1].id);
             for (int j = 0; j < NOMBRE_VOIES; j++) {
                 if (j == 3) {
-			printf("\n");
+                    printf("\n");
                 }
                 const char* typeVoie = (j < 3) ? "⬆️ D" : "⬇️ A";
-		
 
-                printf("%s %d: ", typeVoie, carrefour->voies[j].id);
-		
+                printf("%-4s %-2d: ", typeVoie, carrefour->voies[j].id);
 
                 if (carrefour->voies[j].debut) {
-
-		    if(carrefour->voies[j].debut->type == 0){
-			priorityicon = "🚨";
-		    }else{
-			priorityicon = " ";
-		    }
+                    if (carrefour->voies[j].debut->type == 0) {
+                        priorityicon = "🚨";
+                    } else {
+                        priorityicon = " ";
+                    }
 
                     if (carrefour->voies[j].debut->destination == carrefour->id) {
-		
-                        printf("vehicle %d 🚦%s ... 🗺️ trajet", carrefour->voies[j].debut->id, carrefour->voies[j].debut->icon);
+                        printf("vehicle %-2d 🚦%-2s ... 🗺️ trajet", carrefour->voies[j].debut->id, carrefour->voies[j].debut->icon);
                     } else {
-
-                        printf("%s vehicle %d %s  -> 📍%d", priorityicon, carrefour->voies[j].debut->id, carrefour->voies[j].debut->icon, carrefour->voies[j].debut->destination);
+                        printf("%s vehicle %-2d %-2s  -> 📍%-2d", priorityicon, carrefour->voies[j].debut->id, carrefour->voies[j].debut->icon, carrefour->voies[j].debut->destination);
                     }
                     if (carrefour->voies[j].debut->id < 10) {
                         printf(" ");
@@ -242,16 +237,19 @@ void* simulationVehicules(void* args) {
                     printf("*🍃");
                 }
 
-                printf("                                        %s %d: ", typeVoie, carrefour[1].voies[j].id);
-
-		
+                printf("                                        %-4s %-2d: ", typeVoie, carrefour[1].voies[j].id);
 
                 if (carrefour[1].voies[j].debut) {
+                    if (carrefour[1].voies[j].debut->type == 0) {
+                        priorityicon = "🚨";
+                    } else {
+                        priorityicon = " ";
+                    }
 
                     if (carrefour[1].voies[j].debut->destination == carrefour[1].id) {
-                        printf("vehicle %d 🚦%s ... 🗺️ trajet", carrefour[1].voies[j].debut->id, carrefour[1].voies[j].debut->icon);
+                        printf("vehicle %-2d 🚦%-2s ... 🗺️ trajet", carrefour[1].voies[j].debut->id, carrefour[1].voies[j].debut->icon);
                     } else {
-                        printf("vehicle %d %s  -> 📍%d", carrefour[1].voies[j].debut->id, carrefour[1].voies[j].debut->icon, carrefour[1].voies[j].debut->destination);
+                        printf("%s vehicle %-2d %-2s  -> 📍%-2d", priorityicon, carrefour[1].voies[j].debut->id, carrefour[1].voies[j].debut->icon, carrefour[1].voies[j].debut->destination);
                     }
                     if (carrefour[1].voies[j].debut->id < 10) {
                         printf(" ");
@@ -261,23 +259,20 @@ void* simulationVehicules(void* args) {
                 }
                 printf("\n");
             }
-		
-	    
-
 
         }
-	printf("---------------------------------------------------------------------------------------------------------------\n");
 
-	for (int i = 0; i < NOMBRE_CARREFOURS; i++) {
-	    Carrefour* carrefour = &serveur->carrefours[i];
+        printf("---------------------------------------------------------------------------------------------------------------\n");
 
-	    // Appeler la fonction pour afficher les 20 derniers véhicules libérés
-	    afficherDerniersVehiculesLiberes(carrefour);
+        for (int i = 0; i < NOMBRE_CARREFOURS; i++) {
+            Carrefour* carrefour = &serveur->carrefours[i];
 
-	    // Appeler la fonction pour réinitialiser la liste des véhicules libérés si nécessaire
-	    reinitialiserListeVehiculesLiberes(carrefour);
-	}
+            // Appeler la fonction pour afficher les 20 derniers véhicules libérés
+            afficherDerniersVehiculesLiberes(carrefour);
 
+            // Appeler la fonction pour réinitialiser la liste des véhicules libérés si nécessaire
+            reinitialiserListeVehiculesLiberes(carrefour);
+        }
 
         usleep(1000000);
         system("clear");
