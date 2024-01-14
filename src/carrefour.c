@@ -1,10 +1,4 @@
 #include "carrefour.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-#include <unistd.h>
-#include <sys/msg.h>
-#include "request.h"
 
 
 static int lastRequestID = 1;
@@ -19,6 +13,7 @@ void initialiserVoie(Voie* voie, int id) {
     voie->debut = NULL;
     voie->fin = NULL;
 }
+
 void initialiserCarrefour(Carrefour* carrefour, int id, int msgQueueID) {
     carrefour->id = id;
 
@@ -30,7 +25,6 @@ void initialiserCarrefour(Carrefour* carrefour, int id, int msgQueueID) {
         initialiserVoie(&(carrefour->voies[i]), i + 1);
     }
 }
-
 
 // Fonction pour initialiser le carrefour
 
@@ -48,38 +42,49 @@ void ajouterVehicule(Carrefour* carrefour, Vehicule* vehicule, int voie){
         carrefour->voies[voie - 1].fin->suivant = vehicule;
         carrefour->voies[voie - 1].fin = vehicule;
     }
-
     pthread_mutex_unlock(&(carrefour->voies[voie - 1].mutex));
 }
 
-// Fonction pour retirer un véhicule d'une voie du carrefour
-Vehicule* retirerVehicule(Carrefour* carrefour, int voie) {
+Vehicule* retirerVehicule(Carrefour* carrefour, int voie){
     pthread_mutex_lock(&(carrefour->voies[voie - 1].mutex));
 
-    Vehicule* vehicule = NULL;
-    if (carrefour->voies[voie - 1].debut != NULL) {
-        vehicule = carrefour->voies[voie - 1].debut;
+    // Retirer le véhicule du début de la file de la voie spécifiée
+    Vehicule* vehicule = carrefour->voies[voie - 1].debut;
+    if (vehicule != NULL) {
         carrefour->voies[voie - 1].debut = vehicule->suivant;
-        if (carrefour->voies[voie - 1].debut == NULL) {
-            carrefour->voies[voie - 1].fin = NULL;
-        }
+        vehicule->suivant = NULL;
+	carrefour->vehiculesLibres = vehicule;
     }
 
     pthread_mutex_unlock(&(carrefour->voies[voie - 1].mutex));
-
     return vehicule;
 }
 
+void* liberervoie(void* arg){
+    LibererVoieArgs* threadArgs = (LibererVoieArgs*)arg;
+    Carrefour* carrefour = threadArgs->carrefour;
+    int voie = threadArgs->voie;
+
+    // Simuler le temps de passage du véhicule
+    sleep(10);
+
+    // retirer le véhicule de la voie
+    pthread_mutex_unlock(&(carrefour->voies[voie - 1].mutex));
+    carrefour->voies[voie - 1].debut = NULL;
+    carrefour->voies[voie - 1].fin = NULL;
+
+    pthread_exit(NULL);
+}
+
+
 void envoyerRequest(Carrefour* carrefour, Vehicule* vehicule) {
     Request request;
-
     // Lock before incrementing the shared variable
     pthread_mutex_lock(&lastRequestIDMutex);
     request.ID = lastRequestID++;
     pthread_mutex_unlock(&lastRequestIDMutex);
-
-    initialiserRequest(&request, carrefour->id, vehicule->id, request.ID);
-
+    initialiserRequest(&request, carrefour->id, vehicule->id, request.ID, vehicule->destination);
+    request.mtype = REQUEST_TYPE;
     // Envoyer la demande
     if (msgsnd(carrefour->msgQueueID, &request, sizeof(Request) - sizeof(long), 0) == -1) {
         perror("Erreur lors de l'envoi de la demande au serveur");
@@ -90,21 +95,20 @@ void envoyerRequest(Carrefour* carrefour, Vehicule* vehicule) {
 
 void recevoirResponse(Carrefour* carrefour) {
     Response response;
-    initialiserResponse(&response, 0, 0, 0);
+    // Recevoir la réponse
     if (msgrcv(carrefour->msgQueueID, &response, sizeof(Response) - sizeof(long), RESPONSE_TYPE, 0) == -1) {
         perror("Erreur lors de la réception de la réponse du serveur");
-    } else {
-        printf("Réponse reçue par le carrefour %d pour le véhicule %d.\n", response.CarrefourID, response.VoitureID);
     }
 }
-
-
-
 void* comportementCarrefour(void* arg) {
     Carrefour* carrefour = (Carrefour*)arg;
     unsigned int seed = carrefour->seed;
 
     srand((unsigned int)time(NULL));
+    //initialiser les mutex pour les voies et les debloquer
+    for (int i = 0; i < NOMBRE_VOIES; i++) {
+        pthread_mutex_init(&(carrefour->voies[i].mutex), NULL);
+    }
     for (;;) {
         int nombreVehicule = rand_r(&seed) % 3 + 1;
 
@@ -115,24 +119,51 @@ void* comportementCarrefour(void* arg) {
                 vehicule->id = lastVehicleID++;
                 pthread_mutex_unlock(&lastVehicleIDMutex);
                 vehicule->type = rand_r(&seed) % 4;
+		vehicule->icon = getEmoticon(vehicule->type);
                 vehicule->vitesse = rand_r(&seed) % 100 + 1;
-                vehicule->destination = rand_r(&seed) % NOMBRE_CARREFOURS + 1;
-
-                // Ajouter le véhicule à une voie aléatoire entre 1 et NOMBRE_VOIES
-                int voieAleatoire = rand_r(&seed) % NOMBRE_VOIES + 1;
+                // La destination doit être différente du carrefour actuel
+                do {
+                    vehicule->destination = rand_r(&seed) % NOMBRE_CARREFOURS + 1;
+                } while (vehicule->destination == carrefour->id);
+                // Ajouter le véhicule à une voie aléatoire entre 1 et 3
+                int voieAleatoire = rand_r(&seed) % 3 + 1;
                 ajouterVehicule(carrefour, vehicule, voieAleatoire);
 
                 envoyerRequest(carrefour, vehicule);
-
                 recevoirResponse(carrefour);
+                retirerVehicule(carrefour, voieAleatoire);
             }
         }
-        sleep(2);
-        printf("Nombre de véhicules créés par le carrefour %d : %d\n", carrefour->id, nombreVehicule);
-
-
-        sleep(8);
     }
 
-    pthread_exit(NULL);
+}
+
+// Fonction pour définir un émoticône en fonction du type de véhicule
+const char* getEmoticon(int type) {
+    // Initialiser le générateur de nombres aléatoires avec une graine basée sur le temps
+    srand(time(NULL));
+
+    // Tableau d'émoticônes pour chaque type
+	const char* emoticons[][5] = {
+	    {"🚓", "🚑", "🚒"}, // Émoticônes pour le type 0 (priorité 0)
+	    {"🚕", "🚗", "🚙"}, // Émoticônes pour le type 1 (priorité 1)
+	    {"🏍️", "🛵", "🚲", "🛴"}, // Émoticônes pour le type 2 (priorité 2)
+	    {"🚚", "🚛", "🚌"}    // Émoticônes pour le type 3 (priorité 3)
+	};
+
+	// Nombre d'émoticônes associées à chaque type
+	const int emoticonCount[] = {3, 3, 3, 3};
+
+
+    // Vérifier si le type est valide
+    if (type >= 0 && type < sizeof(emoticons) / sizeof(emoticons[0])) {
+        // Choisir un indice aléatoire pour l'émoticône
+        int randomIndex = rand() % emoticonCount[type];
+
+        // Retourner l'émoticône correspondante
+        return emoticons[type][randomIndex];
+    } else {
+        // Retourner une émoticône par défaut pour les types invalides
+        return "❓";
+    }
 }
