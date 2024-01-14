@@ -270,9 +270,9 @@ void* simulationVehicules(void* args) {
 
         printf("---------------------------------------------------------------------------------------------------------------\n");
 
-        for (int i = 0; i < NOMBRE_CARREFOURS; i++) {
+        for (int i = 0; i < NOMBRE_CARREFOURS / 2; i++) {
 
-            Carrefour* carrefour = &serveur->carrefours[i];
+            Carrefour* carrefour = &serveur->carrefours[i * 2];
 
             // Appeler la fonction pour afficher les 20 derniers véhicules libérés
             afficherDerniersVehiculesLiberes(carrefour);
@@ -298,30 +298,33 @@ void afficherDerniersVehiculesLiberes(Carrefour* carrefour) {
         return;
     }
 
-    printf("\nVéhicules libérés de Carrefour %d:\n", carrefour->id);
+    for(int i = 0; i<NOMBRE_CARREFOURS / 2; i++){
 
-    if (!carrefour->vehiculesLibres) {
-        printf("No vehicles are liberated in this Carrefour.\n");
-        return;
-    }
+	    printf("\nVéhicules libérés de Carrefour %d:\n", carrefour[i].id);
 
-    Vehicule* vehicule = carrefour->vehiculesLibres;
-    int count = 0;
+	    if (!carrefour[i].vehiculesLibres) {
+		printf("No vehicles are liberated in this Carrefour.\n");
+		return;
+	    }
 
-    while (vehicule && count < 20) {
-        if (vehicule->icon) {
-            printf("   - Vehicle %d %s  -> 📍%d\n", vehicule->id, vehicule->icon, vehicule->destination);
-        } else {
-            printf("   - Vehicle %d Unknown Icon  -> 📍%d\n", vehicule->id, vehicule->destination);
-        }
+	    Vehicule* vehicule = carrefour[i].vehiculesLibres;
+	    int count = 0;
 
-        if (vehicule->suivant) {
-            vehicule = vehicule->suivant;
-            count++;
-        } else {
-            break;
-        }
-    }
+	    while (vehicule && count < 20) {
+		if (vehicule->icon) {
+		    printf("   - Vehicle %d %s  -> 📍%d\n", vehicule->id, vehicule->icon, vehicule->destination);
+		} else {
+		    printf("   - Vehicle %d Unknown Icon  -> 📍%d\n", vehicule->id, vehicule->destination);
+		}
+
+		if (vehicule->suivant) {
+		    vehicule = vehicule->suivant;
+		    count++;
+		} else {
+		    break;
+		}
+	    }
+     }
 }
 
 void reinitialiserListeVehiculesLiberes(Carrefour* carrefour) {
@@ -332,20 +335,22 @@ void reinitialiserListeVehiculesLiberes(Carrefour* carrefour) {
 
     int tailleMax = 50;
 
-    int tailleListe = 0;
-    Vehicule* vehicule = carrefour->vehiculesLibres;
+    for(int i = 0; i<NOMBRE_CARREFOURS / 2; i++){
+	    int tailleListe = 0;
+	    Vehicule* vehicule = carrefour[i].vehiculesLibres;
 
-    while (vehicule) {
-        tailleListe++;
-        vehicule = vehicule->suivant;
-    }
+	    while (vehicule) {
+		tailleListe++;
+		vehicule = vehicule->suivant;
+	    }
 
-    if (tailleListe >= tailleMax) {
-        printf("\nRéinitialisation de la liste des véhicules libérés de Carrefour %d.\n", carrefour->id);
-        while (carrefour->vehiculesLibres) {
-            vehicule = carrefour->vehiculesLibres;
-            carrefour->vehiculesLibres = vehicule->suivant;
-            free(vehicule);
-        }
+	    if (tailleListe >= tailleMax) {
+		printf("\nRéinitialisation de la liste des véhicules libérés de Carrefour %d.\n", carrefour->id);
+		while (carrefour->vehiculesLibres) {
+		    vehicule = carrefour[i].vehiculesLibres;
+		    carrefour[i].vehiculesLibres = vehicule->suivant;
+		    free(vehicule);
+		}
+	    }
     }
 }
