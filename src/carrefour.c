@@ -156,7 +156,7 @@ const char* getEmoticon(int type) {
 
 
     // Vérifier si le type est valide
-    if (type >= 0 && type < sizeof(emoticons) / sizeof(emoticons[0])) {
+    if (type >= 0 && type < (int)(sizeof(emoticons) / sizeof(emoticons[0]))) {
         // Choisir un indice aléatoire pour l'émoticône
         int randomIndex = rand() % emoticonCount[type];
 

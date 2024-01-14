@@ -18,7 +18,7 @@ typedef struct Vehicule Vehicule;
 struct Vehicule {
     int id;
     int type;
-    char *icon;
+    const char *icon;
     int vitesse;
     int destination;
     Vehicule* suivant;

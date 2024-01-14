@@ -237,7 +237,13 @@ void* simulationVehicules(void* args) {
                     printf("*🍃");
                 }
 
-                printf("                                        %-4s %-2d: ", typeVoie, carrefour[1].voies[j].id);
+                // Adjust the spacing based on the length of the output for proper alignment
+                int spacing = 40 - printf("%-4s %-2d: ", typeVoie, carrefour->voies[j].id);
+                for (int k = 0; k < spacing; k++) {
+                    printf(" ");
+                }
+
+                printf("%-4s %-2d: ", typeVoie, carrefour[1].voies[j].id);
 
                 if (carrefour[1].voies[j].debut) {
                     if (carrefour[1].voies[j].debut->type == 0) {
@@ -265,6 +271,7 @@ void* simulationVehicules(void* args) {
         printf("---------------------------------------------------------------------------------------------------------------\n");
 
         for (int i = 0; i < NOMBRE_CARREFOURS; i++) {
+
             Carrefour* carrefour = &serveur->carrefours[i];
 
             // Appeler la fonction pour afficher les 20 derniers véhicules libérés
@@ -285,35 +292,54 @@ void* simulationVehicules(void* args) {
 
 
 
-// Fonction pour afficher les icônes des 20 derniers véhicules libérés
 void afficherDerniersVehiculesLiberes(Carrefour* carrefour) {
+    if (!carrefour) {
+        printf("Carrefour is not initialized.\n");
+        return;
+    }
+
     printf("\nVéhicules libérés de Carrefour %d:\n", carrefour->id);
+
+    if (!carrefour->vehiculesLibres) {
+        printf("No vehicles are liberated in this Carrefour.\n");
+        return;
+    }
 
     Vehicule* vehicule = carrefour->vehiculesLibres;
     int count = 0;
 
-    // Parcours des véhicules libérés jusqu'à atteindre les 20 derniers ou la fin de la liste
     while (vehicule && count < 20) {
-        printf("   - Vehicle %d %s  -> 📍%d\n", vehicule->id, vehicule->icon, vehicule->destination);
-        vehicule = vehicule->suivant;
-        count++;
-    }
+        if (vehicule->icon) {
+            printf("   - Vehicle %d %s  -> 📍%d\n", vehicule->id, vehicule->icon, vehicule->destination);
+        } else {
+            printf("   - Vehicle %d Unknown Icon  -> 📍%d\n", vehicule->id, vehicule->destination);
+        }
 
+        if (vehicule->suivant) {
+            vehicule = vehicule->suivant;
+            count++;
+        } else {
+            break;
+        }
+    }
 }
 
-// Fonction pour réinitialiser la liste des véhicules libérés si la taille atteint 50
 void reinitialiserListeVehiculesLiberes(Carrefour* carrefour) {
+    if (!carrefour) {
+        printf("Carrefour is not initialized.\n");
+        return;
+    }
+
     int tailleMax = 50;
 
-    // Vérifier la taille de la liste des véhicules libérés
     int tailleListe = 0;
     Vehicule* vehicule = carrefour->vehiculesLibres;
+
     while (vehicule) {
         tailleListe++;
         vehicule = vehicule->suivant;
     }
 
-    // Si la taille dépasse la limite, réinitialiser la liste
     if (tailleListe >= tailleMax) {
         printf("\nRéinitialisation de la liste des véhicules libérés de Carrefour %d.\n", carrefour->id);
         while (carrefour->vehiculesLibres) {
